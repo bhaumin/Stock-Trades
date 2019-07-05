@@ -34,12 +34,16 @@ async function processStart(tradesFilepath, capGainsFilePath) {
     const scripCodes = [...scripCodesSet];
     scripCodes.sort();
 
+    endProgress();
     // Step 4 - Calculate Capital Gains
     calculateCapitalGains(allScrips, scripCodes);
 
-    // Step 5 - Export to a file
-    exportCapitalGains(allScrips, scripCodes, capGainsFilePath);
+    endProgress();
 
+    // Step 5 - Export to a file
+    await exportCapitalGains(allScrips, scripCodes, capGainsFilePath);
+
+    endProgress();
   } catch(err) {
     console.error(err);
   }
@@ -84,15 +88,24 @@ function importTrades(allTradesRaw, scripCodesSet) {
 
     scrips[scripCode].addTrade(tradeAction, tradeDate, tradeTime, tradeQty, tradePrice);
     scripCodesSet.add(scripCode);
+
+    showProgress(i, 1);
   }
 
   return scrips;
 }
 
 function calculateCapitalGains(scrips, scripCodes) {
-  for (let scripCode of scripCodes) {
+  for (let i = 0; i < scripCodes.length; i++) {
+    const scripCode = scripCodes[i];
     const scrip = scrips[scripCode];
-    scrip.calcCapitalGains();
+    const success = scrip.calcCapitalGains();
+
+    if (success) {
+      showProgress(i+1);
+    } else {
+      showXOnProgress(scripCode);
+    }
   }
 }
 
@@ -103,10 +116,12 @@ async function exportCapitalGains(scrips, scripCodes, filepath) {
 
     for (let scripCode of scripCodes) {
       const scrip = scrips[scripCode];
-      for (let capGain of scrip.capitalGains) {
+      for (let i = 0; i < scrip.capitalGains.length; i++) {
+        const capGain = scrip.capitalGains[i];
         const prefixCols = [scrip.code, scrip.name].join(defaultSeparator);
         const dataRow = prefixCols + defaultSeparator + capGain.toString(defaultSeparator);
         await appendToFile(filepath, dataRow);
+        showProgress(i+1);
       }
     }
   } catch(err) {
@@ -141,4 +156,18 @@ function appendToFile(filepath, data) {
       resolve();
     });
   });
+}
+
+function showProgress(index, rate = 1) {
+  if ((index % rate) === 0) {
+    process.stdout.write(".");
+  }
+}
+
+function showXOnProgress(s) {
+  process.stdout.write("x");
+}
+
+function endProgress() {
+  process.stdout.write("\n\n");
 }
