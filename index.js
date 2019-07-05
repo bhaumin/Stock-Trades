@@ -37,7 +37,7 @@ async function processStart(tradesFilepath, capGainsFilePath) {
     // Step 4 - Calculate Capital Gains
     calculateCapitalGains(allScrips, scripCodes);
 
-    // Step 4 - Export to a file
+    // Step 5 - Export to a file
     exportCapitalGains(allScrips, scripCodes, capGainsFilePath);
 
   } catch(err) {
