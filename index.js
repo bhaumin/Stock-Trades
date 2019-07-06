@@ -29,21 +29,19 @@ async function processStart(tradesFilepath, capGainsFilePath) {
 
     // Step 2 - Import trades
     const allScrips = importTrades(allTradesRaw, scripCodesSet);
-
-    // Step 3 - Convert scrip codes set to an array and sort
+    // Convert set to array and sort
     const scripCodes = [...scripCodesSet];
     scripCodes.sort();
+    showProgress(newline.repeat(2));
 
-    endProgress();
-    // Step 4 - Calculate Capital Gains
+    // Step 3 - Calculate Capital Gains
     calculateCapitalGains(allScrips, scripCodes);
+    showProgress(newline.repeat(2));
 
-    endProgress();
-
-    // Step 5 - Export to a file
+    // Step 4 - Export to a file
     await exportCapitalGains(allScrips, scripCodes, capGainsFilePath);
+    showProgress(newline.repeat(2));
 
-    endProgress();
   } catch(err) {
     console.error(err);
   }
@@ -56,7 +54,7 @@ function readFileAsArray(filepath) {
         reject(err);
       }
 
-      const rows = data.trim().split("\n");
+      const rows = data.trim().split(newline);
       resolve(rows);
     });
   });
@@ -88,8 +86,7 @@ function importTrades(allTradesRaw, scripCodesSet) {
 
     scrips[scripCode].addTrade(tradeAction, tradeDate, tradeTime, tradeQty, tradePrice);
     scripCodesSet.add(scripCode);
-
-    showProgress(i, 1);
+    showProgress();
   }
 
   return scrips;
@@ -100,12 +97,7 @@ function calculateCapitalGains(scrips, scripCodes) {
     const scripCode = scripCodes[i];
     const scrip = scrips[scripCode];
     const success = scrip.calcCapitalGains();
-
-    if (success) {
-      showProgress(i+1);
-    } else {
-      showXOnProgress(scripCode);
-    }
+    showProgress(success ? "." : "x");
   }
 }
 
@@ -121,7 +113,7 @@ async function exportCapitalGains(scrips, scripCodes, filepath) {
         const prefixCols = [scrip.code, scrip.name].join(defaultSeparator);
         const dataRow = prefixCols + defaultSeparator + capGain.toString(defaultSeparator);
         await appendToFile(filepath, dataRow);
-        showProgress(i+1);
+        showProgress();
       }
     }
   } catch(err) {
@@ -158,16 +150,6 @@ function appendToFile(filepath, data) {
   });
 }
 
-function showProgress(index, rate = 1) {
-  if ((index % rate) === 0) {
-    process.stdout.write(".");
-  }
-}
-
-function showXOnProgress(s) {
-  process.stdout.write("x");
-}
-
-function endProgress() {
-  process.stdout.write("\n\n");
+function showProgress(char = ".") {
+  process.stdout.write(char);
 }
