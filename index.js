@@ -76,6 +76,7 @@ function readFileAsArray(filepath, removeHeaderRow = false) {
     fs.readFile(filepath, "utf8", function(err, data) {
       if (err) {
         reject(err);
+        return;
       }
 
       const rows = data.trim().split(newline);
@@ -180,6 +181,7 @@ function writeToFile(filepath, data) {
     fs.writeFile(filepath, data + newline, "utf8", function(err) {
       if (err) {
         reject(err);
+        return;
       }
 
       resolve();
