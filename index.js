@@ -10,7 +10,7 @@ const errorFilePath = Constants.getErrorFilePath();
 const capitalGainsOutputFilePath = Constants.getCapitalGainsOutputFilePath();
 const defaultSeparator = Constants.getSeparator();
 const newline = Constants.getNewline();
-const showProgressFlag = false;
+const showProgressFlag = true;
 
 
 run();
