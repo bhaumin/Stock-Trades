@@ -75,8 +75,7 @@ function readFileAsArray(filepath, removeHeaderRow = false) {
   return new Promise((resolve, reject) => {
     fs.readFile(filepath, "utf8", function(err, data) {
       if (err) {
-        reject(err);
-        return;
+        return reject(err);
       }
 
       const rows = data.trim().split(newline);
@@ -85,7 +84,7 @@ function readFileAsArray(filepath, removeHeaderRow = false) {
         rows.shift();
       }
 
-      resolve(rows);
+      return resolve(rows);
     });
   });
 }
@@ -180,11 +179,10 @@ function writeToFile(filepath, data) {
   return new Promise((resolve, reject) => {
     fs.writeFile(filepath, data + newline, "utf8", function(err) {
       if (err) {
-        reject(err);
-        return;
+        return reject(err);
       }
 
-      resolve();
+      return resolve();
     });
   });
 }
@@ -194,10 +192,10 @@ function appendToFile(filepath, data) {
   return new Promise((resolve, reject) => {
     fs.appendFile(filepath, data + newline, "utf8", function(err) {
       if (err) {
-        reject(err);
+        return reject(err);
       }
 
-      resolve();
+      return resolve();
     });
   });
 }
