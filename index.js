@@ -116,7 +116,6 @@ function importTrades(tradesRaw, ixPrices, scripCodesSet) {
     }
 
     const tradeDate = moment(trade[0].trim(), "YYYY-MM-DD");
-    const tradeTime = moment(trade[1].trim(), "kk:mm:ss");
     const scripCode = trade[2].trim();
     const scripName = trade[3].trim();
     const buyQty = trade[4] ? trade[4].trim() : "";
@@ -130,7 +129,7 @@ function importTrades(tradesRaw, ixPrices, scripCodesSet) {
       scrips[scripCode] = new Scrip(scripCode, scripName, scripIxPrice);
     }
 
-    scrips[scripCode].addTrade(tradeAction, tradeDate, tradeTime, tradeQty, tradePrice);
+    scrips[scripCode].addTrade(tradeAction, tradeDate, tradeQty, tradePrice);
     scripCodesSet.add(scripCode);
     showProgress();
   }
