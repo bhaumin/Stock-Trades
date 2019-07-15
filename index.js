@@ -34,18 +34,21 @@ async function run() {
     // Step 4 - Open trade data file
     const tradesRaw = await readFileAsArray(tradesDataFilePath, true);
 
-    // Step 5 - Import trades
-    const scrips = importTrades(tradesRaw, ixPrices, scripCodesSet);
+    // Step 5 - Sort trades
+    const tradesSorted = sortTrades(tradesRaw);
+
+    // Step 6 - Import trades
+    const scrips = importTrades(tradesSorted, ixPrices, scripCodesSet);
     // Convert set to array and sort
     const scripCodes = [...scripCodesSet];
     scripCodes.sort();
     showProgress(newline.repeat(2));
 
-    // Step 6 - Calculate Capital Gains
+    // Step 7 - Calculate Capital Gains
     calculateCapitalGains(scrips, scripCodes);
     showProgress(newline.repeat(2));
 
-    // Step 7 - Export to a file
+    // Step 8 - Export to a file
     await exportCapitalGains(scrips, scripCodes, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
@@ -104,9 +107,8 @@ function importIxPrices(ixPricesRaw) {
   return ixPrices;
 }
 
-
-function importTrades(tradesRaw, ixPrices, scripCodesSet) {
-  const scrips = {};
+function sortTrades(tradesRaw) {
+  const allTrades = [];
 
   for (let i = 0; i < tradesRaw.length; i++) {
     const trade = tradesRaw[i].trim().split(defaultSeparator);
@@ -115,15 +117,27 @@ function importTrades(tradesRaw, ixPrices, scripCodesSet) {
       continue;
     }
 
-    const tradeDate = moment(trade[0].trim(), "YYYY-MM-DD");
-    const scripCode = trade[2].trim();
-    const scripName = trade[3].trim();
     const buyQty = trade[4] ? trade[4].trim() : "";
     const sellQty = trade[5] ? trade[5].trim() : "";
-    const tradeAction = buyQty !== "" ? "BUY" : "SELL";
-    const tradeQty = buyQty !== "" ? parseInt(buyQty) : parseInt(sellQty);
-    const tradePrice = parseFloat(trade[6]);
 
+    allTrades.push({
+      tradeDate: moment(trade[0].trim(), "YYYY-MM-DD"),
+      scripCode: trade[2].trim(),
+      scripName: trade[3].trim(),
+      tradeAction: buyQty !== "" ? "BUY" : "SELL",
+      tradeQty: buyQty !== "" ? parseInt(buyQty) : parseInt(sellQty),
+      tradePrice: parseFloat(trade[6])
+    });
+  }
+
+  return allTrades.sort((x, y) => x.tradeDate.diff(y.tradeDate));
+}
+
+function importTrades(trades, ixPrices, scripCodesSet) {
+  const scrips = {};
+
+  for (let trade of trades) {
+    const {tradeDate, scripCode, scripName, tradeAction, tradeQty, tradePrice} = trade;
     if (!scrips.hasOwnProperty(scripCode)) {
       const scripIxPrice = ixPrices.hasOwnProperty(scripCode) ? ixPrices[scripCode] : null;
       scrips[scripCode] = new Scrip(scripCode, scripName, scripIxPrice);
