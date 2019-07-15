@@ -17,7 +17,7 @@ run();
 
 
 async function run() {
-  const scripCodesSet = new Set();
+  const scripNamesSet = new Set();
 
   try {
     // Step 1 - Clear the errors file
@@ -38,18 +38,18 @@ async function run() {
     const tradesSorted = sortTrades(tradesRaw);
 
     // Step 6 - Import trades
-    const scrips = importTrades(tradesSorted, ixPrices, scripCodesSet);
+    const scrips = importTrades(tradesSorted, ixPrices, scripNamesSet);
     // Convert set to array and sort
-    const scripCodes = [...scripCodesSet];
-    scripCodes.sort();
+    const scripNames = [...scripNamesSet];
+    scripNames.sort();
     showProgress(newline.repeat(2));
 
     // Step 7 - Calculate Capital Gains
-    calculateCapitalGains(scrips, scripCodes);
+    calculateCapitalGains(scrips, scripNames);
     showProgress(newline.repeat(2));
 
     // Step 8 - Export to a file
-    await exportCapitalGains(scrips, scripCodes, capitalGainsOutputFilePath);
+    await exportCapitalGains(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
     // const debugScrip = scrips["532215"];
@@ -133,18 +133,18 @@ function sortTrades(tradesRaw) {
   return allTrades.sort((x, y) => x.tradeDate.diff(y.tradeDate));
 }
 
-function importTrades(trades, ixPrices, scripCodesSet) {
+function importTrades(trades, ixPrices, scripNamesSet) {
   const scrips = {};
 
   for (let trade of trades) {
     const {tradeDate, scripCode, scripName, tradeAction, tradeQty, tradePrice} = trade;
-    if (!scrips.hasOwnProperty(scripCode)) {
+    if (!scrips.hasOwnProperty(scripName)) {
       const scripIxPrice = ixPrices.hasOwnProperty(scripCode) ? ixPrices[scripCode] : null;
-      scrips[scripCode] = new Scrip(scripCode, scripName, scripIxPrice);
+      scrips[scripName] = new Scrip(scripCode, scripName, scripIxPrice);
     }
 
-    scrips[scripCode].addTrade(tradeAction, tradeDate, tradeQty, tradePrice);
-    scripCodesSet.add(scripCode);
+    scrips[scripName].addTrade(tradeAction, tradeDate, tradeQty, tradePrice);
+    scripNamesSet.add(scripName);
     showProgress();
   }
 
@@ -152,22 +152,22 @@ function importTrades(trades, ixPrices, scripCodesSet) {
 }
 
 
-function calculateCapitalGains(scrips, scripCodes) {
-  for (let i = 0; i < scripCodes.length; i++) {
-    const scripCode = scripCodes[i];
-    const scrip = scrips[scripCode];
+function calculateCapitalGains(scrips, scripNames) {
+  for (let i = 0; i < scripNames.length; i++) {
+    const scripName = scripNames[i];
+    const scrip = scrips[scripName];
     const success = scrip.calcCapitalGains();
     showProgress(success ? "." : "x");
   }
 }
 
-async function exportCapitalGains(scrips, scripCodes, filepath) {
+async function exportCapitalGains(scrips, scripNames, filepath) {
   try {
     const fileHeader = getFileHeader(defaultSeparator);
     await writeToFile(filepath, fileHeader);
 
-    for (let scripCode of scripCodes) {
-      const scrip = scrips[scripCode];
+    for (let scripName of scripNames) {
+      const scrip = scrips[scripName];
       for (let i = 0; i < scrip.capitalGains.length; i++) {
         const capGain = scrip.capitalGains[i];
         const prefixCols = [scrip.code, scrip.name].join(defaultSeparator);
