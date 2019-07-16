@@ -6,7 +6,7 @@ const Constants = require("./lib/constants");
 
 const tradesDataFilePath = Constants.getTradesDataFilePath();
 const ixPriceFilePath = Constants.getIxPriceFilePath();
-const errorFilePath = Constants.getErrorFilePath();
+// const errorFilePath = Constants.getErrorFilePath();
 const capitalGainsOutputFilePath = Constants.getCapitalGainsOutputFilePath();
 const defaultSeparator = Constants.getSeparator();
 const newline = Constants.getNewline();
@@ -21,7 +21,7 @@ async function run() {
 
   try {
     // Step 1 - Clear the errors file
-    await clearFile(errorFilePath);
+    // await clearFile(errorFilePath);
 
     // Step 2 - Open Ix Prices file
     const ixPricesRaw = await readFileAsArray(ixPriceFilePath, true);
