@@ -48,8 +48,12 @@ async function run() {
     calculateCapitalGains(scrips, scripNames);
     showProgress(newline.repeat(2));
 
-    // Step 8 - Export to a file
+    // Step 8 - Export Capital Gains to a file
     await exportCapitalGains(scrips, scripNames, capitalGainsOutputFilePath);
+    showProgress(newline.repeat(2));
+
+    // Step 9 - Export Unmatched Trades to the Capital Gains file
+    await exportUnmatchedTrades(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
     // const debugScrip = scrips["532215"];
@@ -107,6 +111,7 @@ function importIxPrices(ixPricesRaw) {
   return ixPrices;
 }
 
+
 function sortTrades(tradesRaw) {
   const allTrades = [];
 
@@ -132,6 +137,7 @@ function sortTrades(tradesRaw) {
 
   return allTrades.sort((x, y) => x.tradeDate.diff(y.tradeDate));
 }
+
 
 function importTrades(trades, ixPrices, scripNamesSet) {
   const scrips = {};
@@ -161,6 +167,7 @@ function calculateCapitalGains(scrips, scripNames) {
   }
 }
 
+
 async function exportCapitalGains(scrips, scripNames, filepath) {
   try {
     const fileHeader = getFileHeader(defaultSeparator);
@@ -172,6 +179,73 @@ async function exportCapitalGains(scrips, scripNames, filepath) {
         const capGain = scrip.capitalGains[i];
         const prefixCols = [scrip.code, scrip.name].join(defaultSeparator);
         const dataRow = prefixCols + defaultSeparator + capGain.toString(defaultSeparator);
+        await appendToFile(filepath, dataRow);
+        showProgress();
+      }
+
+      if (scrip.capitalGains.length > 0) {
+        const balanceRow = defaultSeparator + "Remaining Balance:" + defaultSeparator + scrip.balance + newline;
+        await appendToFile(filepath, balanceRow);
+      }
+    }
+  } catch(err) {
+    console.error(err);
+  }
+}
+
+
+async function exportUnmatchedTrades(scrips, scripNames, filepath) {
+  try {
+
+    await appendToFile(filepath, newline + defaultSeparator + "UNMATCHED TRADES");
+
+    for (let scripName of scripNames) {
+      const scrip = scrips[scripName];
+
+      for (let buyTrade of scrip.buyTrades) {
+        if (buyTrade.quantity === 0) {
+          continue;
+        }
+
+        const dataRow = [
+          scrip.code,
+          scrip.name,
+          buyTrade.quantity,
+          buyTrade.date.format("DD-MMM-YYYY"),
+          (buyTrade.quantity * buyTrade.price).toFixed(2),
+          "",
+          "",
+          "",
+          "",
+          "",
+          "",
+          ""
+        ].join(defaultSeparator);
+
+        await appendToFile(filepath, dataRow);
+        showProgress();
+      }
+
+      for (let sellTrade of scrip.sellTrades) {
+        if (sellTrade.quantity === 0) {
+          continue;
+        }
+
+        const dataRow = [
+          scrip.code,
+          scrip.name,
+          sellTrade.quantity,
+          "",
+          "",
+          "",
+          sellTrade.date.format("DD-MMM-YYYY"),
+          (sellTrade.quantity * sellTrade.price).toFixed(2),
+          "",
+          "",
+          "",
+          ""
+        ].join(defaultSeparator);
+
         await appendToFile(filepath, dataRow);
         showProgress();
       }
