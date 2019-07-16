@@ -10,7 +10,7 @@ const errorFilePath = Constants.getErrorFilePath();
 const capitalGainsOutputFilePath = Constants.getCapitalGainsOutputFilePath();
 const defaultSeparator = Constants.getSeparator();
 const newline = Constants.getNewline();
-const showProgressFlag = true;
+const showProgressFlag = false;
 
 
 run();
@@ -202,57 +202,84 @@ async function exportUnmatchedTrades(scrips, scripNames, filepath) {
     for (let scripName of scripNames) {
       const scrip = scrips[scripName];
 
-      for (let buyTrade of scrip.buyTrades) {
-        if (buyTrade.quantity === 0) {
+      let bIndex = 0;
+      let sIndex = 0;
+
+      while (bIndex < scrip.buyTrades.length && sIndex < scrip.sellTrades.length) {
+        const buyTrade = scrip.buyTrades[bIndex];
+        const sellTrade = scrip.sellTrades[sIndex];
+
+        if (buyTrade.quantity === 0 && sellTrade.quantity === 0) {
+          bIndex++;
+          sIndex++;
+          continue;
+        } else if (buyTrade.quantity === 0) {
+          bIndex++;
+          continue;
+        } else if (sellTrade.quantity === 0) {
+          sIndex++;
           continue;
         }
 
-        const dataRow = [
-          scrip.code,
-          scrip.name,
-          buyTrade.quantity,
-          buyTrade.date.format("DD-MMM-YYYY"),
-          (buyTrade.quantity * buyTrade.price).toFixed(2),
-          "",
-          "",
-          "",
-          "",
-          "",
-          "",
-          ""
-        ].join(defaultSeparator);
+        let dataRow;
+        if (buyTrade.date.diff(sellTrade.date) <= 0) {
+          dataRow = getUnmatchedTradeDataRow(scrip.code, scrip.name, buyTrade, null, defaultSeparator);
+          bIndex++;
+        } else {
+          dataRow = getUnmatchedTradeDataRow(scrip.code, scrip.name, null, sellTrade, defaultSeparator);
+          sIndex++;
+        }
 
         await appendToFile(filepath, dataRow);
         showProgress();
       }
 
-      for (let sellTrade of scrip.sellTrades) {
-        if (sellTrade.quantity === 0) {
+      while (bIndex < scrip.buyTrades.length) {
+        const buyTrade = scrip.buyTrades[bIndex];
+
+        if (buyTrade.quantity === 0) {
+          bIndex++;
           continue;
         }
 
-        const dataRow = [
-          scrip.code,
-          scrip.name,
-          sellTrade.quantity,
-          "",
-          "",
-          "",
-          sellTrade.date.format("DD-MMM-YYYY"),
-          (sellTrade.quantity * sellTrade.price).toFixed(2),
-          "",
-          "",
-          "",
-          ""
-        ].join(defaultSeparator);
-
+        const dataRow = getUnmatchedTradeDataRow(scrip.code, scrip.name, buyTrade, null, defaultSeparator);
         await appendToFile(filepath, dataRow);
+        bIndex++;
+        showProgress();
+      }
+
+      while (sIndex < scrip.sellTrades.length) {
+        const sellTrade = scrip.sellTrades[sIndex];
+
+        if (sellTrade.quantity === 0) {
+          sIndex++;
+          continue;
+        }
+
+        const dataRow = getUnmatchedTradeDataRow(scrip.code, scrip.name, null, sellTrade, defaultSeparator);
+        await appendToFile(filepath, dataRow);
+        sIndex++;
         showProgress();
       }
     }
   } catch(err) {
     console.error(err);
   }
+}
+
+
+function getUnmatchedTradeDataRow(scripCode, scripName, buyTrade, sellTrade, separator = ",") {
+  const prefixData = [scripCode, scripName].join(separator);
+  const trade = buyTrade ? buyTrade : sellTrade;
+  const type = buyTrade ? "BUY" : "SELL";
+  const tradeData = trade.toStringForUnmatched(type, separator);
+  const suffixData = new Array(4).fill("").join(separator);
+
+  return [
+    prefixData,
+    tradeData,
+    suffixData
+  ].join(separator);
 }
 
 
