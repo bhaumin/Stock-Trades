@@ -144,13 +144,14 @@ function importTrades(trades, ixPrices, scripNamesSet) {
 
   for (let trade of trades) {
     const {tradeDate, scripCode, scripName, tradeAction, tradeQty, tradePrice} = trade;
-    if (!scrips.hasOwnProperty(scripName)) {
+    const scripKey = scripName + "_" + scripCode;
+    if (!scrips.hasOwnProperty(scripKey)) {
       const scripIxPrice = ixPrices.hasOwnProperty(scripCode) ? ixPrices[scripCode] : null;
-      scrips[scripName] = new Scrip(scripCode, scripName, scripIxPrice);
+      scrips[scripKey] = new Scrip(scripCode, scripName, scripIxPrice);
     }
 
-    scrips[scripName].addTrade(tradeAction, tradeDate, tradeQty, tradePrice);
-    scripNamesSet.add(scripName);
+    scrips[scripKey].addTrade(tradeAction, tradeDate, tradeQty, tradePrice);
+    scripNamesSet.add(scripKey);
     showProgress();
   }
 
@@ -159,8 +160,7 @@ function importTrades(trades, ixPrices, scripNamesSet) {
 
 
 function calculateCapitalGains(scrips, scripNames) {
-  for (let i = 0; i < scripNames.length; i++) {
-    const scripName = scripNames[i];
+  for (let scripName of scripNames) {
     const scrip = scrips[scripName];
     const success = scrip.calcCapitalGains();
     showProgress(success ? "." : "x");
