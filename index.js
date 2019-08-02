@@ -6,6 +6,7 @@ const Constants = require("./lib/constants");
 
 const tradesDataFilePath = Constants.getTradesDataFilePath();
 const ixPriceFilePath = Constants.getIxPriceFilePath();
+const corpActionsFilePath = Constants.getCorpActionsFilePath();
 // const errorFilePath = Constants.getErrorFilePath();
 const capitalGainsOutputFilePath = Constants.getCapitalGainsOutputFilePath();
 const defaultSeparator = Constants.getSeparator();
@@ -28,35 +29,44 @@ async function run() {
 
     // Step 3 - Import Ix Prices
     const ixPrices = importIxPrices(ixPricesRaw);
-
     // console.log(Object.keys(ixPrices).length);
 
-    // Step 4 - Open trade data file
+    // Step 4 - Open Corp Actions file
+    const corpActionsRaw = await readFileAsArray(corpActionsFilePath, true);
+
+    // Step 5 - Import Corp Actions
+    const corpActions = importCorpActions(corpActionsRaw);
+    // console.log(corpActions);
+
+    // Step 6 - Open trade data file
     const tradesRaw = await readFileAsArray(tradesDataFilePath, true);
 
-    // Step 5 - Sort trades
+    // Step 7 - Sort trades
     const tradesSorted = sortTrades(tradesRaw);
 
-    // Step 6 - Import trades
-    const scrips = importTrades(tradesSorted, ixPrices, scripNamesSet);
+    // Step 8 - Import trades
+    const scrips = importTrades(tradesSorted, ixPrices, scripNamesSet, corpActions);
     // Convert set to array and sort
     const scripNames = [...scripNamesSet];
     scripNames.sort();
     showProgress(newline.repeat(2));
 
-    // Step 7 - Calculate Capital Gains
+    // Step 9 - Calculate Capital Gains
     calculateCapitalGains(scrips, scripNames);
     showProgress(newline.repeat(2));
 
-    // Step 8 - Export Capital Gains to a file
+    // Step 10 - Export Capital Gains to a file
     await exportCapitalGains(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
-    // Step 9 - Export Unmatched Trades to the Capital Gains file
+    // Step 11 - Export Unmatched Trades to the Capital Gains file
     await exportUnmatchedTrades(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
-    // const debugScrip = scrips["532215"];
+    // const debugScrip = scrips["ADITY BIR CA_540691"];
+    // console.log(debugScrip.toString());
+
+    // const debugScrip = scrips["COAL INDIA_533278"];
     // console.log(debugScrip.toString());
 
   } catch(err) {
@@ -112,6 +122,56 @@ function importIxPrices(ixPricesRaw) {
 }
 
 
+function importCorpActions(corpActionsRaw) {
+  const corpActions = {};
+
+  for (let i = 0; i < corpActionsRaw.length; i++) {
+    if (corpActionsRaw[i].trim() === "") {
+      continue;
+    }
+
+    const currentRow = corpActionsRaw[i].trim().split(defaultSeparator).map(x => x ? x.trim() : null);
+
+    if (currentRow.length < 6) {
+      continue;
+    }
+
+    const [ scripCode, recordDate, execDate, actionType, actionRatio, actionPrice ] = currentRow;
+
+    if (!corpActions.hasOwnProperty(scripCode)) {
+      corpActions[scripCode] = {};
+    }
+
+    const corpActionsByScrip = corpActions[scripCode];
+
+    if (!corpActionsByScrip.hasOwnProperty(actionType)) {
+      switch (actionType) {
+        case "I":
+          corpActionsByScrip[actionType] = {
+            ipoDate: moment(execDate, "YYYY-MM-DD"),
+            ipoPrice: actionPrice ? parseFloat(actionPrice) : null
+          };
+          break;
+        case "B":
+        case "S":
+          corpActionsByScrip[actionType] = [];
+          break;
+      }
+    }
+
+    if (["B","S"].indexOf(actionType) >= 0) {
+      corpActionsByScrip[actionType].push({
+        recordDate: recordDate ? moment(recordDate, "YYYY-MM-DD") : null,
+        execDate: moment(execDate, "YYYY-MM-DD"),
+        ratio: actionRatio
+      });
+    }
+  }
+
+  return corpActions;
+}
+
+
 function sortTrades(tradesRaw) {
   const allTrades = [];
 
@@ -135,11 +195,11 @@ function sortTrades(tradesRaw) {
     });
   }
 
-  return allTrades.sort((x, y) => x.tradeDate.diff(y.tradeDate));
+  return allTrades.sort((a, b) => a.tradeDate.diff(b.tradeDate));
 }
 
 
-function importTrades(trades, ixPrices, scripNamesSet) {
+function importTrades(trades, ixPrices, scripNamesSet, corpActions) {
   const scrips = {};
 
   for (let trade of trades) {
@@ -147,7 +207,8 @@ function importTrades(trades, ixPrices, scripNamesSet) {
     const scripKey = scripName + "_" + scripCode;
     if (!scrips.hasOwnProperty(scripKey)) {
       const scripIxPrice = ixPrices.hasOwnProperty(scripCode) ? ixPrices[scripCode] : null;
-      scrips[scripKey] = new Scrip(scripCode, scripName, scripIxPrice);
+      const scripCorpActions = corpActions.hasOwnProperty(scripCode) ? corpActions[scripCode] : null;
+      scrips[scripKey] = new Scrip(scripCode, scripName, scripIxPrice, scripCorpActions);
     }
 
     scrips[scripKey].addTrade(tradeAction, tradeDate, tradeQty, tradePrice);
@@ -162,8 +223,8 @@ function importTrades(trades, ixPrices, scripNamesSet) {
 function calculateCapitalGains(scrips, scripNames) {
   for (let scripName of scripNames) {
     const scrip = scrips[scripName];
-    const success = scrip.calcCapitalGains();
-    showProgress(success ? "." : "x");
+    scrip.calcCapitalGains();
+    showProgress();
   }
 }
 
@@ -177,7 +238,8 @@ async function exportCapitalGains(scrips, scripNames, filepath) {
       const scrip = scrips[scripName];
       for (let i = 0; i < scrip.capitalGains.length; i++) {
         const capGain = scrip.capitalGains[i];
-        const prefixCols = [scrip.code, scrip.name].join(defaultSeparator);
+        const capGainDesc = capGain.desc ? ` (${capGain.desc})` : "";
+        const prefixCols = [scrip.code, scrip.name + capGainDesc].join(defaultSeparator);
         const dataRow = prefixCols + defaultSeparator + capGain.toString(defaultSeparator);
         await appendToFile(filepath, dataRow);
         showProgress();
