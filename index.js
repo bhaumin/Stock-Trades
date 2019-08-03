@@ -63,10 +63,16 @@ async function run() {
     await exportUnmatchedTrades(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
+    // For IPO testing
+    // const debugScrip = scrips["COAL INDIA_533278"];
+    // console.log(debugScrip.toString());
+
+    // For Bonus testing
     // const debugScrip = scrips["ADITY BIR CA_540691"];
     // console.log(debugScrip.toString());
 
-    // const debugScrip = scrips["COAL INDIA_533278"];
+    // For Split testing
+    // const debugScrip = scrips["PHIL CAR BLK_506590"];
     // console.log(debugScrip.toString());
 
   } catch(err) {
@@ -195,7 +201,7 @@ function sortTrades(tradesRaw) {
     });
   }
 
-  return allTrades.sort((a, b) => a.tradeDate.diff(b.tradeDate));
+  return allTrades.sort((a, b) => a.tradeDate.diff(b.tradeDate, "days"));
 }
 
 
