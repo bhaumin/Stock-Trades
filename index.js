@@ -18,48 +18,40 @@ run();
 
 
 async function run() {
-  const scripNamesSet = new Set();
 
   try {
     // Step 1 - Clear the errors file
     // await clearFile(errorFilePath);
 
-    // Step 2 - Open Ix Prices file
-    const ixPricesRaw = await readFileAsArray(ixPriceFilePath, true);
-
-    // Step 3 - Import Ix Prices
-    const ixPrices = importIxPrices(ixPricesRaw);
+    // Step 2 - Open and import Ix Prices
+    const ixPricesRaw = fileExists(ixPriceFilePath) ? await readFileAsArray(ixPriceFilePath, true) : null;
+    const ixPrices = ixPricesRaw ? importIxPrices(ixPricesRaw) : null;
     // console.log(Object.keys(ixPrices).length);
 
-    // Step 4 - Open Corp Actions file
-    const corpActionsRaw = await readFileAsArray(corpActionsFilePath, true);
-
-    // Step 5 - Import Corp Actions
-    const corpActions = importCorpActions(corpActionsRaw);
+    // Step 3 - Open and import Corp Actions
+    const corpActionsRaw = fileExists(corpActionsFilePath) ? await readFileAsArray(corpActionsFilePath, true) : null;
+    const corpActions = corpActionsRaw ? importCorpActions(corpActionsRaw) : null;
     // console.log(corpActions);
 
-    // Step 6 - Open trade data file
+    // Step 4 - Open, sort and import trade data
     const tradesRaw = await readFileAsArray(tradesDataFilePath, true);
-
-    // Step 7 - Sort trades
     const tradesSorted = sortTrades(tradesRaw);
-
-    // Step 8 - Import trades
-    const scrips = importTrades(tradesSorted, ixPrices, scripNamesSet, corpActions);
+    const scripNamesSet = new Set();
+    const scrips = importTrades(tradesSorted, scripNamesSet, ixPrices, corpActions);
     // Convert set to array and sort
     const scripNames = [...scripNamesSet];
     scripNames.sort();
     showProgress(newline.repeat(2));
 
-    // Step 9 - Calculate Capital Gains
+    // Step 5 - Calculate Capital Gains
     calculateCapitalGains(scrips, scripNames);
     showProgress(newline.repeat(2));
 
-    // Step 10 - Export Capital Gains to a file
+    // Step 6 - Export Capital Gains to a file
     await exportCapitalGains(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
-    // Step 11 - Export Unmatched Trades to the Capital Gains file
+    // Step 7 - Export Unmatched Trades to the Capital Gains file
     await exportUnmatchedTrades(scrips, scripNames, capitalGainsOutputFilePath);
     showProgress(newline.repeat(2));
 
@@ -91,6 +83,11 @@ function clearFile(filepath) {
     resolve();
     });
   });
+}
+
+
+function fileExists(filepath) {
+  return fs.existsSync(filepath);
 }
 
 
@@ -205,15 +202,15 @@ function sortTrades(tradesRaw) {
 }
 
 
-function importTrades(trades, ixPrices, scripNamesSet, corpActions) {
+function importTrades(trades, scripNamesSet, ixPrices, corpActions) {
   const scrips = {};
 
   for (let trade of trades) {
     const {tradeDate, scripCode, scripName, tradeAction, tradeQty, tradePrice} = trade;
     const scripKey = scripName + "_" + scripCode;
     if (!scrips.hasOwnProperty(scripKey)) {
-      const scripIxPrice = ixPrices.hasOwnProperty(scripCode) ? ixPrices[scripCode] : null;
-      const scripCorpActions = corpActions.hasOwnProperty(scripCode) ? corpActions[scripCode] : null;
+      const scripIxPrice = ixPrices && ixPrices.hasOwnProperty(scripCode) ? ixPrices[scripCode] : null;
+      const scripCorpActions = corpActions && corpActions.hasOwnProperty(scripCode) ? corpActions[scripCode] : null;
       scrips[scripKey] = new Scrip(scripCode, scripName, scripIxPrice, scripCorpActions);
     }
 
