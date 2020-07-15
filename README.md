@@ -1,4 +1,4 @@
-# Stock-Trades
+# Capital-Gains-Report
 Generate capital gains report from all buy and sell stock trades with the following high level requirements (and complexities to handle):
 * Trades input data may not be ordered by date
 * Types of Gains - Intraday, Short-Term, Long-Term, Long-Term with Indexation (Indexation cost = Highest price on Jan 31st 2018)
