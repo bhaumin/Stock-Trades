@@ -60,7 +60,7 @@ async function run() {
     // console.log(debugScrip.toString());
 
     // For Bonus testing
-    // const debugScrip = scrips["ADITY BIR CA_540691"];
+    // const debugScrip = scrips["RELIANCE IND_500325"];
     // console.log(debugScrip.toString());
 
     // For Split testing
